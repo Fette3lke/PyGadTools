@@ -11,15 +11,20 @@ from astro import *
 from sphvis import *
 from optparse import OptionParser
 import matplotlib
-
+import numpy.linalg
+import OpenGL.GL
 
 
 from pyqtgraph.dockarea import *
 
 class myGLViewWidget(gl.GLViewWidget):
-    def init(self, **kwargs):
+    def __init__(self, **kwargs):
         gl.GLViewWidget.__init__(self, **kwargs)
-        self.reset()
+        self.reset()        
+        self.initview = np.array([[ 1.,  0.,  0.],
+                                  [ 0.,  0.,  1.],
+                                  [ 0., -1.,  0.]])
+
                         
     def reset(self):
         self.opts['azimuth'] = -90
@@ -29,8 +34,11 @@ class myGLViewWidget(gl.GLViewWidget):
  
         self.opts['center'] = QtGui.QVector3D(0.0, 0.0, 0.0)
         self.opts['fov'] = 60
-        self.opts['distance'] = 30
+        self.opts['distance'] = 30        
         self.update()
+
+    def currentView(self):
+        return np.dot(OpenGL.GL.glGetFloatv(OpenGL.GL.GL_MODELVIEW_MATRIX)[:3, :3], self.initview)
 
 
 class popupPlot(QtGui.QDialog):
@@ -84,7 +92,6 @@ class mainWindow(QtGui.QMainWindow):
 
         self.ViewWidget = myGLViewWidget()
         self.ViewWidget.addItem(self.vis)
-        self.ViewWidget.reset()
         d1.addWidget(self.ViewWidget)
 
         ## setup embedded IPython terminal
@@ -101,7 +108,9 @@ class mainWindow(QtGui.QMainWindow):
         d3.addWidget(w3)
 
         ##buttons
-        buttons = [('Reset', self.ViewWidget.reset, 'r')]
+        buttons = [('Reset', self.ViewWidget.reset, 'r'),
+                   ('Save Rotation', self.saveCurrentView, None),
+                   ]
         for text, action, shortcut in buttons:
             btn = QtGui.QPushButton(text)
             w3.addWidget(btn)
@@ -143,7 +152,7 @@ class mainWindow(QtGui.QMainWindow):
         openFile = QtGui.QAction('&Open File', self)        
         openFile.setShortcut('Ctrl+O')
         openFile.setStatusTip('Open new Gadget File')
-        openFile.triggered.connect(self.fileSelect)
+        openFile.triggered.connect(self.openGadget)
 
         popupAction = QtGui.QAction('&PlotPopup', self)        
         popupAction.setStatusTip('Exit application')
@@ -166,12 +175,21 @@ class mainWindow(QtGui.QMainWindow):
         self.toolbar.addAction(popupAction)
         self.toolbar.addAction(exitAction)
 
-
     def fileSelect(self):
         fname = QtGui.QFileDialog.getOpenFileName(self, 'Open file', self.filePath)
         if fname:
             self.filePath =  QtCore.QFileInfo(fname).path()
+            return fname
+
+    def openGadget(self):
+        fname = self.fileSelect()
+        if fname:
             self.loadsnapshot_gadget(fname)
+
+    def saveCurrentView(self):
+        fname = self.fileSelect()
+        with (open(fname, 'w')) as f:
+            self.ViewWidget.currentView().transpose().astype(np.float64).tofile(f)
 
     def loadsnapshot_gadget(self, fname, **kwargs):
         self.sn.readgadget(fname, **kwargs)
