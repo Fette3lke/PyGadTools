@@ -16,9 +16,27 @@ import matplotlib
 
 from pyqtgraph.dockarea import *
 
+class myGLViewWidget(gl.GLViewWidget):
+    def init(self, **kwargs):
+        gl.GLViewWidget.__init__(self, **kwargs)
+        self.reset()
+                        
+    def reset(self):
+        self.opts['azimuth'] = -90
+        self.opts['elevation'] = 00
+#        self.opts['azimuth'] = 45
+#        self.opts['elevation'] = 30 
+ 
+        self.opts['center'] = QtGui.QVector3D(0.0, 0.0, 0.0)
+        self.opts['fov'] = 60
+        self.opts['distance'] = 30
+        self.update()
+
+
 class popupPlot(QtGui.QDialog):
     def __init__(self, parent=None):
         super(popupPlot, self).__init__()
+
 
 class mainWindow(QtGui.QMainWindow):
     def __init__(self, load=None, loadsnapshot=None, options={}, **kwargs):
@@ -64,12 +82,13 @@ class mainWindow(QtGui.QMainWindow):
         self.sn = snapshot()
         self.vis = sphvis()
 
-        w1 = gl.GLViewWidget()
-        w1.addItem(self.vis)
-        d1.addWidget(w1)
+        self.ViewWidget = myGLViewWidget()
+        self.ViewWidget.addItem(self.vis)
+        self.ViewWidget.reset()
+        d1.addWidget(self.ViewWidget)
 
         ## setup embedded IPython terminal
-        namespace={'pg': pg, 'np': np, 'vis': self.vis, 'sn': self.sn, 'w1': w1, 'main': self }
+        namespace={'pg': pg, 'np': np, 'vis': self.vis, 'sn': self.sn, 'vw': self.ViewWidget, 'main': self }
         #w2 = pg.console.ConsoleWidget(namespace=namespace)
         w2 = QIPythonWidget()
         w2.pushVariables(namespace)
@@ -77,11 +96,21 @@ class mainWindow(QtGui.QMainWindow):
 
 
         ## setup control widget
-        label = QtGui.QLabel("Controls")
         w3 = pg.LayoutWidget()
-        w3.addWidget(label)
         w3.nextRow()
         d3.addWidget(w3)
+
+        ##buttons
+        buttons = [('Reset', self.ViewWidget.reset, 'r')]
+        for text, action, shortcut in buttons:
+            btn = QtGui.QPushButton(text)
+            w3.addWidget(btn)
+            w3.nextRow()
+            if shortcut:
+                btn.setShortcut(shortcut)
+            btn.clicked.connect(action)
+
+        ## spins
         spins = [
             ("Pointsize", pg.SpinBox(value=0.1, bounds=[0, 100]), self.sizechange),
             ("Pointsize", pg.SpinBox(value=0.1, bounds=[0, 100]), self.sizechange)
@@ -92,6 +121,8 @@ class mainWindow(QtGui.QMainWindow):
             w3.addWidget(spin)
             w3.nextRow()
             spin.sigValueChanged.connect(slot)
+        label =  QtGui.QLabel("") 
+        w3.addWidget(label)
 
     def sizechange(self, sb):
         self.vis.sizes[:] = sb.value()
