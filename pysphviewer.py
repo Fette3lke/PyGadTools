@@ -37,6 +37,21 @@ class myGLViewWidget(gl.GLViewWidget):
         self.opts['distance'] = 30        
         self.update()
 
+    def rotateXZ(self):
+        self.opts['azimuth'] = -90
+        self.opts['elevation'] = 00
+        self.update()
+
+    def rotateXY(self):
+        self.opts['azimuth'] = -90
+        self.opts['elevation'] = 90
+        self.update()
+
+    def rotateYZ(self):
+        self.opts['azimuth'] = 0
+        self.opts['elevation'] = 00
+        self.update()
+
     def currentView(self):
         return np.dot(OpenGL.GL.glGetFloatv(OpenGL.GL.GL_MODELVIEW_MATRIX)[:3, :3], self.initview)
 
@@ -104,21 +119,37 @@ class mainWindow(QtGui.QMainWindow):
 
         ## setup control widget
         w3 = pg.LayoutWidget()
-        w3.nextRow()
+#        w3.nextRow()
         d3.addWidget(w3)
 
+        label =  QtGui.QLabel("") 
+        w3.addWidget(label)
+        w3.nextRow()
         ##buttons
-        buttons = [('Reset', self.ViewWidget.reset, 'r'),
-                   ('Save Rotation', self.saveCurrentView, None),
+        buttons = [('Reset', self.ViewWidget.reset, 'r', -1),
+                   ('Save Rotation', self.saveCurrentView, None, -1),
+                   ('X-Z', self.ViewWidget.rotateXZ, 'c', None),
+                   ('X-Y', self.ViewWidget.rotateXY, 'v', None),
+                   ('Y-Z', self.ViewWidget.rotateYZ, 'b', 1),
                    ]
-        for text, action, shortcut in buttons:
+        for text, action, shortcut, cs in buttons:
             btn = QtGui.QPushButton(text)
-            w3.addWidget(btn)
-            w3.nextRow()
+            btn.setMinimumWidth(15)
+            if cs:
+                w3.addWidget(btn, colspan=cs)
+                w3.nextRow()
+            else:
+                w3.addWidget(btn)
+#            if nr:
+
             if shortcut:
                 btn.setShortcut(shortcut)
             btn.clicked.connect(action)
-
+            
+        
+#        w3.nextRow()
+        w4 = pg.LayoutWidget()
+        d3.addWidget(w4)
         ## spins
         spins = [
             ("Pointsize", pg.SpinBox(value=0.1, bounds=[0, 100]), self.sizechange),
@@ -126,12 +157,12 @@ class mainWindow(QtGui.QMainWindow):
             ]        
         for text, spin, slot in spins:
             label = QtGui.QLabel("%16s" % text)
-            w3.addWidget(label)
-            w3.addWidget(spin)
-            w3.nextRow()
+            w4.addWidget(label)
+            w4.addWidget(spin)
+            w4.nextRow()
             spin.sigValueChanged.connect(slot)
         label =  QtGui.QLabel("") 
-        w3.addWidget(label)
+        w4.addWidget(label)
 
     def sizechange(self, sb):
         self.vis.sizes[:] = sb.value()
