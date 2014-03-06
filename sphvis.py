@@ -29,27 +29,54 @@ class sphvis(gl.GLScatterPlotItem):
         self.sizes = np.ones(self.npart) * 0.1
         self.setData(pos = self.pos, color=self.colors, size=self.sizes, pxMode=False)
         self.lum = lum
+        self.initColors()
+        self.initSizes()
+
+    def initColors(self):
+        self.gasalpha = 1.
+        self.haloalpha = 1.
+        self.diskalpha = 1.
+        self.bulgealpha = 1.
+        self.staralpha = 1.
+        
+        self.gascol = [1., 0., 0.]
+        self.halocol = [0., 0., 1.]
+        self.diskcol = [0., 1., 0.]
+        self.bulgecol = [0., 1., 0.]
+        self.starcol = [1., 1., 0.]
         self.setColors()
 
-    def setColors(self, gascol=[1.,0,0,0.5], halocol=[1., 1., 0., 0.5]):        
-        lum = 0.5
-        self.gasalpha = lum
-        self.haloalpha = lum
-        self.diskalpha = lum
-        self.bulgealpha = lum
-        self.staralpha = lum
-        
-#        self.gascol = [1., 0., 0., self.gasalpha]
-        self.gascol = gascol
-        self.halocol = [1., 1., 0., self.staralpha]
-        self.diskcol = [1., 1., 0., self.staralpha]
-        self.bulgecol = [1., 1., 0., self.staralpha]
-        self.starcol = [1., 1., 0., self.staralpha]
+    def initSizes(self):
+        self.gassize = 0.1
+        self.halosize = 0.1
+        self.disksize = 0.1
+        self.bulgesize = 0.1
+        self.starsize = 0.1
+        self.mastersize = 1.0
+        self.setSizes()
 
-        self.colors[self.startgas:self.endgas, :] = self.gascol
-        self.colors[self.starthalo:self.endhalo, :] = self.halocol
-        self.colors[self.startdisk:self.enddisk, :] = self.diskcol
-        self.colors[self.startbulge:self.endbulge, :] = self.bulgecol
-        self.colors[self.startstars:self.endstars, :] = self.starcol
+    def setColors(self):                
+        self.colors[self.startgas:self.endgas, :] = self.gascol + [self.gasalpha * self.lum ]
+        self.colors[self.starthalo:self.endhalo, :] = self.halocol + [self.haloalpha * self.lum]
+        self.colors[self.startdisk:self.enddisk, :] = self.diskcol + [self.haloalpha * self.lum]
+        self.colors[self.startbulge:self.endbulge, :] = self.bulgecol + [self.bulgealpha * self.lum]
+        self.colors[self.startstars:self.endstars, :] = self.starcol + [self.staralpha * self.lum]
         self.setData(color=self.colors)
 
+    def setSizes(self):
+        self.sizes[self.startgas:self.endgas] = self.gassize * self.mastersize
+        self.sizes[self.starthalo:self.endhalo] = self.halosize * self.mastersize
+        self.sizes[self.startdisk:self.enddisk] = self.disksize * self.mastersize
+        self.sizes[self.startbulge:self.endbulge] = self.bulgesize * self.mastersize
+        self.sizes[self.startstars:self.endstars] = self.starsize * self.mastersize
+        self.setData(size=self.sizes)
+        
+    def sizeChange(self, sb):
+        self.mastersize = sb.value()
+        self.setSizes()
+        self.update()
+
+    def alphaChange(self, sb):
+        self.lum = sb.value()
+        self.setColors()
+        self.update()

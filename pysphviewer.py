@@ -14,6 +14,8 @@ import matplotlib
 import numpy.linalg
 import OpenGL.GL
 
+VERSION = "0.1"
+
 
 from pyqtgraph.dockarea import *
 
@@ -64,14 +66,14 @@ class popupPlot(QtGui.QDialog):
 class mainWindow(QtGui.QMainWindow):
     def __init__(self, load=None, loadsnapshot=None, options={}, **kwargs):
         super(mainWindow, self).__init__()
-        self.setupUI()
+        self._setupUI()
         if load is not None:
             self.loaddata_gadget(load)
         if loadsnapshot is not None:
             self.loadsnapshot_gadget(loadsnapshot, basic=options.basic)        
         
 
-    def setupUI(self):
+    def _setupUI(self):
         area = DockArea()
         self.setCentralWidget(area)
         self.resize(1000,800)
@@ -82,22 +84,22 @@ class mainWindow(QtGui.QMainWindow):
         ## Create docks, place them into the window one at a time.
         ## Note that size arguments are only a suggestion; docks will still have to
         ## fill the entire dock area and obey the limits of their internal widgets.
-        d1 = Dock("Main Window", size=(800, 800))
-        d2 = Dock("Console", size=(800,200))
-        d3 = Dock("View", size=(200,800))
-        d4 = Dock("Options", size=(200,800))
-        d1.hideTitleBar()
-        d2.hideTitleBar()
-#        d3.hideTitleBar()
+        self.dock1 = Dock("Main Window", size=(800, 800))
+        self.dock2 = Dock("Console", size=(800,200))
+        self.dock3 = Dock("View", size=(200,800))
+        self.dock4 = Dock("Options", size=(200,800))
+        self.dock1.hideTitleBar()
+        self.dock2.hideTitleBar()
+#        dock3.hideTitleBar()
 
-        area.addDock(d1, 'left')
-        area.addDock(d3, 'right', d1)
-        area.addDock(d4, 'top', d3)
-        area.addDock(d2, 'bottom', d1)
-        area.moveDock(d3, 'above', d4)
+        area.addDock(self.dock1, 'left')
+        area.addDock(self.dock3, 'right', self.dock1)
+        area.addDock(self.dock4, 'top', self.dock3)
+        area.addDock(self.dock2, 'bottom', self.dock1)
+        area.moveDock(self.dock3, 'above', self.dock4)
 
         ## Test ability to move docks programatically after they have been placed
-        #area.moveDock(d1, 'top', d2)     ## move d4 to top edge of d2
+        #area.moveDock(dock1, 'top', dock2)     ## move dock4 to top edge of dock2
 
         ## Add widgets into each dock
     #    self.sn = None
@@ -107,20 +109,30 @@ class mainWindow(QtGui.QMainWindow):
 
         self.ViewWidget = myGLViewWidget()
         self.ViewWidget.addItem(self.vis)
-        d1.addWidget(self.ViewWidget)
+        self.dock1.addWidget(self.ViewWidget)
 
         ## setup embedded IPython terminal
-        namespace={'pg': pg, 'np': np, 'vis': self.vis, 'sn': self.sn, 'vw': self.ViewWidget, 'main': self }
-        #w2 = pg.console.ConsoleWidget(namespace=namespace)
-        w2 = QIPythonWidget()
-        w2.pushVariables(namespace)
-        d2.addWidget(w2)
-
+        self._setupIpythonWidget()
 
         ## setup control widget
+        self._setupControls()
+
+    def _setupIpythonWidget(self):
+        namespace={'pg': pg, 'np': np, 'vis': self.vis, 'sn': self.sn, 'vw': self.ViewWidget, 'main': self }
+        #w2 = pg.console.ConsoleWidget(namespace=namespace)
+        
+        self.ipythonWidget = QIPythonWidget()
+        self.ipythonWidget.pushVariables(namespace)
+        self.dock2.addWidget(self.ipythonWidget)
+        welcomeText = "\nPySPHViewer v%s\n" % (VERSION) \
+            + "The data of the currently visible Snapshot can be accessed with th 'sn' object\n" \
+            + "import numpy as np, pyqtgraph as pg\n" \
+            + "\n"
+        self.ipythonWidget.printText(welcomeText)
+
+    def _setupControls(self):
         w3 = pg.LayoutWidget()
-#        w3.nextRow()
-        d3.addWidget(w3)
+        self.dock3.addWidget(w3)
 
         label =  QtGui.QLabel("") 
         w3.addWidget(label)
@@ -140,20 +152,16 @@ class mainWindow(QtGui.QMainWindow):
                 w3.nextRow()
             else:
                 w3.addWidget(btn)
-#            if nr:
-
             if shortcut:
                 btn.setShortcut(shortcut)
             btn.clicked.connect(action)
             
-        
-#        w3.nextRow()
         w4 = pg.LayoutWidget()
-        d3.addWidget(w4)
+        self.dock3.addWidget(w4)
         ## spins
         spins = [
-            ("Pointsize", pg.SpinBox(value=0.1, bounds=[0, 100]), self.sizechange),
-            ("Pointsize", pg.SpinBox(value=0.1, bounds=[0, 100]), self.sizechange)
+            ("Pointsize", pg.SpinBox(value=1.0, bounds=[0, 100]), self.vis.sizeChange),
+            ("Alpha", pg.SpinBox(value=0.5, bounds=[0., 1.]), self.vis.alphaChange)
             ]        
         for text, spin, slot in spins:
             label = QtGui.QLabel("%16s" % text)
@@ -163,10 +171,6 @@ class mainWindow(QtGui.QMainWindow):
             spin.sigValueChanged.connect(slot)
         label =  QtGui.QLabel("") 
         w4.addWidget(label)
-
-    def sizechange(self, sb):
-        self.vis.sizes[:] = sb.value()
-        self.vis.update()
 
     def initpopup(self):
         self.popupPlot = popupPlot()
