@@ -159,16 +159,30 @@ class mainWindow(QtGui.QMainWindow):
         w4 = pg.LayoutWidget()
         self.dock3.addWidget(w4)
         ## spins
-        spins = [
-            ("Pointsize", pg.SpinBox(value=1.0, bounds=[0, 100]), self.vis.sizeChange),
-            ("Alpha", pg.SpinBox(value=0.5, bounds=[0., 1.]), self.vis.alphaChange)
-            ]        
-        for text, spin, slot in spins:
+#        spins = [
+#            ("Pointsize", pg.SpinBox(value=1.0, bounds=[0, 100]), self.vis.sizeChange),
+#            ("Alpha", pg.SpinBox(value=0.5, bounds=[0., 1.]), self.vis.alphaChange)
+#            ]        
+#        for text, spin, slot in spins:
+#            label = QtGui.QLabel("%16s" % text)
+#            w4.addWidget(label)
+#            w4.addWidget(spin)
+#            w4.nextRow()
+#            spin.sigValueChanged.connect(slot)
+
+        sliders = [
+            ("Pointsize", np.sqrt(self.vis.mastersize)*25, self.vis.sizeChange),
+            ("Alpha", self.vis.lum * 100, self.vis.alphaChange)
+            ]
+        for text, val, slot in sliders:
             label = QtGui.QLabel("%16s" % text)
             w4.addWidget(label)
-            w4.addWidget(spin)
+            sl = QtGui.QSlider(QtCore.Qt.Horizontal)
+            sl.setRange(0,100)
+            sl.setValue(val)
+            w4.addWidget(sl)
             w4.nextRow()
-            spin.sigValueChanged.connect(slot)
+            sl.valueChanged.connect(slot)
         label =  QtGui.QLabel("") 
         w4.addWidget(label)
 
