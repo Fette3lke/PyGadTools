@@ -79,7 +79,7 @@ class mainWindow(QtGui.QMainWindow):
         self.resize(1000,800)
         self.setWindowTitle('Gadget Visualization')
 
-        self.setupMenu()
+        self._setupMenu()
 
         ## Create docks, place them into the window one at a time.
         ## Note that size arguments are only a suggestion; docks will still have to
@@ -197,7 +197,7 @@ class mainWindow(QtGui.QMainWindow):
         self.subplot.plot(np.arange(10))
         mw.draw()
 
-    def setupMenu(self):
+    def _setupMenu(self):
         openFile = QtGui.QAction('&Open File', self)        
         openFile.setShortcut('Ctrl+O')
         openFile.setStatusTip('Open new Gadget File')
