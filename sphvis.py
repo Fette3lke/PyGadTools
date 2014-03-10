@@ -8,8 +8,10 @@ class sphvis(gl.GLScatterPlotItem):
             self.loaddata_gadget(load)
         else:
             self.setData(pos = np.empty((1,3)), pxMode=False)
+        self.mastersize = 1.
+        self.lum = 0.5
 
-    def loaddata_gadget(self, snapshot, lum = 0.5):
+    def loaddata_gadget(self, snapshot):
         self.startgas = snapshot.startgas
         self.starthalo = snapshot.starthalo
         self.startdisk = snapshot.startdisk
@@ -28,7 +30,6 @@ class sphvis(gl.GLScatterPlotItem):
         self.colors= np.ones([self.npart, 4])
         self.sizes = np.ones(self.npart) * 0.1
         self.setData(pos = self.pos, color=self.colors, size=self.sizes, pxMode=False)
-        self.lum = lum
         self.initColors()
         self.initSizes()
 
@@ -52,7 +53,6 @@ class sphvis(gl.GLScatterPlotItem):
         self.disksize = 0.1
         self.bulgesize = 0.1
         self.starsize = 0.1
-        self.mastersize = 1.0
         self.setSizes()
 
     def setColors(self):                
@@ -71,12 +71,12 @@ class sphvis(gl.GLScatterPlotItem):
         self.sizes[self.startstars:self.endstars] = self.starsize * self.mastersize
         self.setData(size=self.sizes)
         
-    def sizeChange(self, sb):
-        self.mastersize = sb.value()
+    def sizeChange(self, val):
+        self.mastersize = (val/100. * 4)**2
         self.setSizes()
         self.update()
 
-    def alphaChange(self, sb):
-        self.lum = sb.value()
+    def alphaChange(self, val):
+        self.lum = val/100.
         self.setColors()
         self.update()

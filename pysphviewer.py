@@ -195,7 +195,7 @@ class mainWindow(QtGui.QMainWindow):
         vbox.addWidget(self.mw)
         self.subplot = self.mw.getFigure().add_subplot(111)
         self.subplot.plot(np.arange(10))
-        mw.draw()
+        self.mw.draw()
 
     def _setupMenu(self):
         openFile = QtGui.QAction('&Open File', self)        
