@@ -13,6 +13,7 @@ from optparse import OptionParser
 import matplotlib
 import numpy.linalg
 import OpenGL.GL
+from PIL import _imaging
 
 VERSION = "0.1"
 
@@ -20,13 +21,15 @@ VERSION = "0.1"
 from pyqtgraph.dockarea import *
 
 class myGLViewWidget(gl.GLViewWidget):
-    def __init__(self, **kwargs):
+    """
+    main drawing window, shows particle data, controls viewport Rotation
+    """
+    def __init__(self, **kwargs):        
         gl.GLViewWidget.__init__(self, **kwargs)
         self.reset()        
         self.initview = np.array([[ 1.,  0.,  0.],
                                   [ 0.,  0.,  1.],
                                   [ 0., -1.,  0.]])
-
                         
     def reset(self):
         self.opts['azimuth'] = -90
@@ -59,11 +62,17 @@ class myGLViewWidget(gl.GLViewWidget):
 
 
 class popupPlot(QtGui.QDialog):
+    """
+    matplotlib plot window to show graphs
+    """
     def __init__(self, parent=None):
         super(popupPlot, self).__init__()
 
 
 class mainWindow(QtGui.QMainWindow):
+    """
+    main Window, parent to GL Viewport and UI
+    """
     def __init__(self, load=None, loadsnapshot=None, options={}, **kwargs):
         super(mainWindow, self).__init__()
         self._setupUI()
@@ -98,15 +107,13 @@ class mainWindow(QtGui.QMainWindow):
         area.addDock(self.dock2, 'bottom', self.dock1)
         area.moveDock(self.dock3, 'above', self.dock4)
 
-        ## Test ability to move docks programatically after they have been placed
-        #area.moveDock(dock1, 'top', dock2)     ## move dock4 to top edge of dock2
-
         ## Add widgets into each dock
     #    self.sn = None
         self.filePath = '.'
         self.sn = snapshot()
         self.vis = sphvis()
 
+        ## add GL Viewport
         self.ViewWidget = myGLViewWidget()
         self.ViewWidget.addItem(self.vis)
         self.dock1.addWidget(self.ViewWidget)
@@ -124,6 +131,7 @@ class mainWindow(QtGui.QMainWindow):
         self.ipythonWidget = QIPythonWidget()
         self.ipythonWidget.pushVariables(namespace)
         self.dock2.addWidget(self.ipythonWidget)
+        self.ipythonWidget.execute("%pylab", True, False)
         welcomeText = "\nPySPHViewer v%s\n" % (VERSION) \
             + "The data of the currently visible Snapshot can be accessed with th 'sn' object\n" \
             + "import numpy as np, pyqtgraph as pg\n" \

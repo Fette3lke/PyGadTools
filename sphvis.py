@@ -33,6 +33,9 @@ class sphvis(gl.GLScatterPlotItem):
         self.initColors()
         self.initSizes()
 
+    def loaddata_custom(self, **kwargs):
+        self.setData(**kwargs)
+
     def initColors(self):
         self.gasalpha = 1.
         self.haloalpha = 1.
