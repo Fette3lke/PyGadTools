@@ -29,6 +29,12 @@ kpc_in_cm = 3.08567758e021
 msun_in_g = 1.9891e33
 G_in_cgs = 6.6742e-8
 crit_dens = (2.78e-8) / kpc_in_cm**3 * (1e10*msun_in_g)          # in cgs * h**2 at z=0
+gamma_minus_1 = 5.0/3 -1
+boltzmann = 1.3806e-16
+protonmass= 1.6726e-24
+hydrogen_fraction= 0.76
+yhelium = ( 1 - hydrogen_fraction ) / ( 4 * hydrogen_fraction )
+
 GAS  = 0
 HALO = 1
 DISK = 2
@@ -49,11 +55,15 @@ def linear(x,a,b):
 # ----- class for snapshot ----- 
 
 class snapshot(object):
-  def __init__(self, filename=None, unit_length_in_cm=kpc_in_cm, unit_mass_in_g=1.9891e43, **kwargs):
+  def __init__(self, filename=None, unit_length_in_cm=kpc_in_cm, unit_mass_in_g=1.9891e43, unit_velocity_in_cm_per_s = 1.e5, **kwargs):
     self.ntypes = 6
     self.center = np.array([0., 0., 0.])
     self.unit_length_in_cm = unit_length_in_cm
+    self.unit_velocity_in_cm_per_s = unit_velocity_in_cm_per_s
     self.unit_mass_in_g = unit_mass_in_g
+    self.unit_time_in_s = self.unit_length_in_cm / self.unit_velocity_in_cm_per_s
+    self.unit_density_in_cgs = self.unit_mass_in_g / self.unit_length_in_cm**3;
+    self.unit_energy_in_cgs = self.unit_mass_in_g * self.unit_length_in_cm**2 / self.unit_time_in_s**2
     if filename != None:
       self.readgadget(filename, **kwargs)
     
@@ -116,6 +126,8 @@ class snapshot(object):
     self.mass /= self.head.hubble
     self.pos *= self.head.time / self.head.hubble
     self.vel *= np.sqrt(self.head.time)
+    self.rho *= self.head.hubble**2 / self.head.time**3
+    self.head.boxsize /= self.head.hubble
 #    self.physical = True
 
   def setOffsets(self):
@@ -217,6 +229,8 @@ class snapshot(object):
       self.__dict__[varname] = self.mass[startind:endind]
       varname = self._makevarname('id', parttypes[i])
       self.__dict__[varname] = self.ids[startind:endind]
+      varname = self._makevarname('i', parttypes[i])
+      self.__dict__[varname] = np.arange(startind,endind)
       self.type[startind:endind] = itype
       itype += 1
 #      self.__setattr__(parttypes[i], self.slice(np.arange(startind,endind), assign=False)) 
@@ -241,20 +255,43 @@ class snapshot(object):
 #    self.assig_names()
 
   def calcTemp(self):
-      gamma_minus_1 = 5.0/3 -1
-      boltzmann = 1.3806e-16
-      protonm= 1.6726e-24
-      hydr_frac= 0.76
-      yhelium = ( 1 - hydr_frac ) / ( 4 * hydr_frac )
-      mass_in_g= 1.989e43
-      length_cm=3.085678e21
-      vel_in_cm_per_s=1e5
-      time_in_s= length_cm / vel_in_cm_per_s
-      energy_cgs = mass_in_g * (length_cm**2) / (time_in_s**2);
-      mu = (1 + 4 * yhelium) / (1 + yhelium + self.ne);          
-      temp = gamma_minus_1 / boltzmann * self.u * protonm * mu;
-      temp *= energy_cgs / mass_in_g;
-      self.temp = temp
+    mu = (1 + 4 * yhelium) / (1 + yhelium + self.ne);          
+    temp = gamma_minus_1 / boltzmann * self.u * protonmass * mu;
+    temp *= self.unit_energy_in_cgs / self.unit_mass_in_g
+    self.temp = temp
+
+  def findCenter(self, cm=None, use=16, maxdist=None):
+    """
+    find Center of particles in snapshot
+    use     - bitcode particle types to use in search (default: stars=16)
+    maxdist - consider particles closer than maxdist to cm
+    """
+    if cm is None:
+      cm = np.repeat(self.head.boxsize/2., 3)
+    ind, = np.where(( (1<<self.type) & use ) != 0)
+    if maxdist is None:
+      maxdist = self.head.boxsize/4.
+
+    i = 0
+    while True:
+      i += 1
+      dist   = np.sqrt(np.sum((self.pos[ind,:] - cm)**2, dtype=np.float64, axis=1))
+      inside = ind [ dist < maxdist ]       
+      cm     = np.sum(self.pos[inside, :].T * self.mass[inside], axis=1) / np.sum (self.mass[inside], dtype=np.float64)
+      if len(inside) < 50:
+        cvel = np.sum(self.vel[inside, :].T * self.mass[inside], axis=1) / np.sum (self.mass[inside], dtype=np.float64)      
+      if len(inside) < 15:
+        break
+    
+      ind      = inside
+      maxdist  = np.min([0.7 * maxdist, 0.7 * np.max(dist)])
+      # print i, len(inside), cm, maxdist
+
+    self.center = cm
+    self.cpos = self.pos - cm
+    self.cvel = self.vel - cvel
+    self.calcDistances()
+      
 
   def calcDistances(self):
     self.dist = np.sqrt(np.sum((self.pos-self.center)**2, dtype=np.float64, axis=1))
@@ -854,7 +891,7 @@ def read_block(filename, block, parttype=-1, physical_velocities=False, arepo=0,
               data[species_offset[j]:species_offset[j]+npart[j]] = curdat[cur_species_offset[j]:cur_species_offset[j]+npart[j]]
         species_offset[j] += npart[j]
 
-    if not curdat == None:
+    if curdat is not None:
       del curdat
 
   if physical_velocities and block=="VEL " and redshift!=0:
