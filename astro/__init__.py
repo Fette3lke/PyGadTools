@@ -70,6 +70,7 @@ class snapshot(object):
   def readgadget(self, filename, export=False, convert=True, basic=False, calcDist=False, loadrot=None):
     self.basic = basic
     self.head = snapshot_header(filename)
+    self.setCosmoParams(self.head)
     self.head.npart = self.head.nall
     self.npart = self.head.npart
     self.ntot = sum(self.head.npart)
@@ -97,6 +98,8 @@ class snapshot(object):
         self.imass = read_block(filename, "INIM")
         self.metstars = read_block(filename, "Z   ", parttype=4, csformat = 1)
         self.metgas = read_block(filename, "Z   ", parttype=0, csformat = 1)
+        self.totmetgas = (np.sum(self.metgas[:, 1:6], axis=1) + np.sum(self.metgas[:, 7:11], axis=1)) / self.metgas[:, 6]
+        self.totmetstars = (np.sum(self.metstars[:, 1:6], axis=1) + np.sum(self.metstars[:, 7:11], axis=1)) / self.metstars[:, 6]
         self.temp = read_block(filename, "CSTE", csformat = 1)
         self.pot = read_block(filename, "POT ", csformat = 1)
 
@@ -129,6 +132,20 @@ class snapshot(object):
     self.rho *= self.head.hubble**2 / self.head.time**3
     self.head.boxsize /= self.head.hubble
 #    self.physical = True
+
+  def setCosmoParams(self, head):
+    HUB = head.hubble
+  
+  def setBarFrac(self, bfrac = None):
+    if brac:
+      BFRAC = bfrac
+      self.bfrac = bfrac      
+    else:
+      mbar = (np.sum(sn.gas.mass, dtype=np.float64) + np.sum(sn.stars.mass, dtype=np.float64)) 
+      mdm  = np.sum(sn.halo.mass, dtype=np.float64)
+      BFRAC = mbar / (mbar + mdm)
+      self.bfrac = BFRAC
+    return self.bfrac
 
   def setOffsets(self):
     self.offset = {'pos' : [0, self.ntot], 'vel' : [0, self.ntot],
