@@ -51,6 +51,13 @@ def power_law(x, a, b):
 def linear(x,a,b):
   return a*x+b
 
+def bytecode(parttype):
+  if parttype is None:
+    return 63
+  if not hasattr(parttype, "__getitem__"):
+    return parrtype
+  return np.sum(1<<np.array(parttype))
+
   
 # ----- class for snapshot ----- 
 
@@ -129,7 +136,10 @@ class snapshot(object):
     self.mass /= self.head.hubble
     self.pos *= self.head.time / self.head.hubble
     self.vel *= np.sqrt(self.head.time)
-    self.rho *= self.head.hubble**2 / self.head.time**3
+    try: 
+      self.rho *= self.head.hubble**2 / self.head.time**3
+    except:
+      pass
     self.head.boxsize /= self.head.hubble
 #    self.physical = True
 
@@ -287,7 +297,7 @@ class snapshot(object):
       cm = np.repeat(self.head.boxsize/2., 3)
     ind, = np.where(( (1<<self.type) & use ) != 0)
     if maxdist is None:
-      maxdist = self.head.boxsize/4.
+      maxdist = self.head.boxsize/2.
 
     i = 0
     while True:
