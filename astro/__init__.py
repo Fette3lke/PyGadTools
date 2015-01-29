@@ -16,6 +16,8 @@
 #
 # the returned data block is ordered by particle species even when read from a multiple file snapshot
 
+#__all__ = ["halo", "snapshot", "snapshot_header"]
+
 import numpy as np
 import os
 import sys
@@ -333,7 +335,7 @@ class snapshot(object):
 
   def getSfr(self, redshifts=None, masses=None, bins=np.logspace(-1, 1, 50)):
     """
-    returns Star formation rate (inferred from stellar ages) and bincenters (redshift)
+    returns Star formation rate (inferred from stellar ages [Msun/yr]) and bincenters (redshift)
     """
     if redshifts == None:
       redshifts = (a2z(self.stars.age))
@@ -345,7 +347,7 @@ class snapshot(object):
     time = np.zeros(len(bins)-1)
     for i in range(len(bins)-1):
         time[i] = galage(bins[i]) - galage(bins[i+1])
-    sfr = sf/time
+    sfr = sf * 1.e10 / time
     return sfr, bincenters
 
   def bins2d(self, z=None, bins=np.arange(10, dtype=np.float32), type=None):
@@ -605,7 +607,11 @@ class snapshot_header:
     f.close()
 
 
+# ----- halo class -----
 
+class halo(snapshot):
+    def __init__(self, *args, **kwargs):
+        super(halo, self).__init__(*args, **kwargs)
     
 
 # ----- find offset and size of data block ----- 
@@ -956,7 +962,7 @@ def list_format2_blocks(filename):
 
 def galage(z, omegam=0.26, omegal=0.74, h=0.72, lookback=False):
     """
-    compute time between z (may be np.array) and the Big Bang, or look-back time
+    compute time [yr] between z (may be np.array) and the Big Bang, or look-back time
     """
     omegak = 1.0 - omegam - omegal;
     h0 = 3.24078e-18 * h;    
