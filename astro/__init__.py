@@ -297,15 +297,20 @@ class snapshot(object):
     temp *= self.unit_energy_in_cgs / self.unit_mass_in_g
     self.temp = temp
 
-  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8):
+  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None):
     """
     find Center of particles in snapshot
     use     - bitcode particle types to use in search (default: stars=16)
     maxdist - consider particles closer than maxdist to cm
+    jump    - reduce radius of sphere by 'jump' in each iteration
+    exclude - set of indices to exclude from search 
     """
     if cm is None:
       cm = np.repeat(self.head.boxsize/2., 3)
     ind, = np.where(( (1<<self.type) & use ) != 0)
+    if exclude is not None:
+      mask = np.in1d(ind, exclude, invert = True)
+      ind  = ind[ mask ]
     if maxdist is None:
       maxdist = self.head.boxsize/2.
 
