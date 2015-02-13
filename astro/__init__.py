@@ -73,10 +73,18 @@ class snapshot(object):
     self.unit_time_in_s = self.unit_length_in_cm / self.unit_velocity_in_cm_per_s
     self.unit_density_in_cgs = self.unit_mass_in_g / self.unit_length_in_cm**3;
     self.unit_energy_in_cgs = self.unit_mass_in_g * self.unit_length_in_cm**2 / self.unit_time_in_s**2
+    self.properties = {}
     if filename != None:
       self.readgadget(filename, **kwargs)
+
+  def __getattr__(self, attr):
+    try:
+      return self.properties[attr]
+    except:
+      return None
     
   def readgadget(self, filename, export=False, convert=True, basic=False, calcDist=False, loadrot=None):
+    self.filename = filename
     self.basic = basic
     self.head = snapshot_header(filename)
     self.setCosmoParams(self.head)
@@ -143,7 +151,7 @@ class snapshot(object):
       self.rho *= self.head.hubble**2 / self.head.time**3
     except:
       pass
-    self.head.boxsize /= self.head.hubble
+    self.head.boxsize *= self.head.time / self.head.hubble
 #    self.physical = True
 
   def setCosmoParams(self, head):
@@ -290,15 +298,20 @@ class snapshot(object):
     temp *= self.unit_energy_in_cgs / self.unit_mass_in_g
     self.temp = temp
 
-  def findCenter(self, cm=None, use=16, maxdist=None):
+  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None):
     """
     find Center of particles in snapshot
     use     - bitcode particle types to use in search (default: stars=16)
     maxdist - consider particles closer than maxdist to cm
+    jump    - reduce radius of sphere by 'jump' in each iteration
+    exclude - set of indices to exclude from search 
     """
     if cm is None:
       cm = np.repeat(self.head.boxsize/2., 3)
     ind, = np.where(( (1<<self.type) & use ) != 0)
+    if exclude is not None:
+      mask = np.in1d(ind, exclude, invert = True)
+      ind  = ind[ mask ]
     if maxdist is None:
       maxdist = self.head.boxsize/2.
 
@@ -314,7 +327,7 @@ class snapshot(object):
         break
     
       ind      = inside
-      maxdist  = np.min([0.7 * maxdist, 0.7 * np.max(dist)])
+      maxdist  = np.min([jump * maxdist, jump * np.max(dist)])
       # print i, len(inside), cm, maxdist
 
     self.center = cm
@@ -471,6 +484,7 @@ class snapshot(object):
   def vcirc(self, bins=np.arange(0, 10, 0.1, dtype=np.float32), plot = True, **kwargs):
     """
     Calculate velocity curves for different particle types.
+    return vcirc, bins[1:], binmass
     """
     if not hasattr(self, 'dist'):
       self.calcDistances()
@@ -504,7 +518,7 @@ class snapshot(object):
 
     return vcirc, bins[1:], binmass
 
-  def r200(self):
+  def r200(self, cut = False):
     rvir = 0
     cdens = crit_dens * self.head.hubble**2 * (self.head.omega_l + self.head.omega_m * self.head.time**(-3) );
     cdens /= self.unit_mass_in_g / self.unit_length_in_cm**3
@@ -522,6 +536,11 @@ class snapshot(object):
     ind = self.sind[i-1]
     masstot -= self.mass[ind]
     rvir = self.dist[ind]
+    if cut:
+      cuthalo = self.slice( self.sind[:i-1] )
+      cuthalo.properties["r200"] = rvir
+      cuthalo.properties["m200"] = masstot
+      return cuthalo
     return rvir, masstot, od
 
   def test(self):
@@ -607,13 +626,7 @@ class snapshot_header:
      
     f.close()
 
-
-# ----- halo class -----
-
-class halo(snapshot):
-    def __init__(self, *args, **kwargs):
-        super(halo, self).__init__(*args, **kwargs)
-    
+        
 
 # ----- find offset and size of data block ----- 
 
