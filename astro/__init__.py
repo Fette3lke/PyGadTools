@@ -98,8 +98,8 @@ class snapshot(object):
           self.ne   = read_block(filename, "NE  ")
           self.nh   = read_block(filename, "NH  ")
         self.hsml = read_block(filename, "HSML")
-      if self.head.sfr:
-        self.sfr  = read_block(filename, "SFR ")
+        if self.head.sfr:
+          self.sfr  = read_block(filename, "SFR ")
       if self.head.age and self.head.npart[4]:
         self.age  = read_block(filename, "AGE ")
       if self.head.metals and not basic and self.head.npart[4]:
@@ -109,7 +109,8 @@ class snapshot(object):
         self.metgas = read_block(filename, "Z   ", parttype=0, csformat = 1)
         self.totmetgas = (np.sum(self.metgas[:, 1:6], axis=1) + np.sum(self.metgas[:, 7:11], axis=1)) / self.metgas[:, 6]
         self.totmetstars = (np.sum(self.metstars[:, 1:6], axis=1) + np.sum(self.metstars[:, 7:11], axis=1)) / self.metstars[:, 6]
-        self.temp = read_block(filename, "CSTE", csformat = 1)
+        if self.head.npart[0]:
+          self.temp = read_block(filename, "CSTE", csformat = 1)
         self.pot = read_block(filename, "POT ", csformat = 1)
 
       if self.head.npart[5]:
@@ -682,6 +683,7 @@ def read_block(filename, block, parttype=-1, physical_velocities=False, arepo=0,
   
   blockadd=0
   blocksub=0
+  nogas   =0
 
   if os.path.exists(filename):
     curfilename = filename
@@ -741,6 +743,8 @@ def read_block(filename, block, parttype=-1, physical_velocities=False, arepo=0,
     bh_blockadd = 4
   else:
     bh_blockadd = 0
+  if not head.npart[0]:
+    nogas = 6
   del head
   
   # - description of data blocks -
@@ -800,41 +804,41 @@ def read_block(filename, block, parttype=-1, physical_velocities=False, arepo=0,
     block_num = 11+blockadd-blocksub
   elif block=="AGE ":
     data_for_type[4:6] = True
-    block_num = 12+blockadd-blocksub
+    block_num = 12+blockadd-blocksub-nogas
   elif block=="LET ":
     data_for_type[4] = True
-    block_num = 13+blockadd-blocksub
+    block_num = 13+blockadd-blocksub-nogas
   elif block=="INIM":
     data_for_type[4] = True
-    block_num = 14+blockadd-blocksub
+    block_num = 14+blockadd-blocksub-nogas
   elif block=="Z   ":
     data_for_type[0] = True
     data_for_type[4] = True
-    block_num = 13+blockadd-blocksub
+    block_num = 13+blockadd-blocksub-nogas
     if csformat:
       dt = np.dtype((np.float32,12))
-      block_num = 15+blockadd-blocksub
+      block_num = 15+blockadd-blocksub-nogas
   elif block=="POT ":
     data_for_type[:] = True
-    block_num = 13+blockadd-blocksub
+    block_num = 13+blockadd-blocksub-nogas
     if csformat:
-      block_num = 16+blockadd-blocksub+bh_blockadd
+      block_num = 16+blockadd-blocksub+bh_blockadd-nogas
   elif block=="CSTE":
     data_for_type[0] = True
-    block_num = 17+blockadd-blocksub+bh_blockadd
+    block_num = 17+blockadd-blocksub+bh_blockadd-nogas
   elif block=="BHMA":
     data_for_type[5] = True
-    block_num = 14+blockadd-blocksub
+    block_num = 14+blockadd-blocksub-nogas
     if csformat:
       block_num += 2
   elif block=="BHMD":
     data_for_type[5] = True
-    block_num = 15+blockadd-blocksub
+    block_num = 15+blockadd-blocksub-nogas
     if csformat:
       block_num += 2
   elif block=="ACRB":
     data_for_type[5] = True
-    block_num = 16+blockadd-blocksub
+    block_num = 16+blockadd-blocksub-nogas
     if csformat:
       block_num += 2
   elif block=="COOR":
