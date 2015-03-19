@@ -217,6 +217,8 @@ class snapshot(object):
 #        print 'deepcopy', entry
 #        print type(self.__dict__[entry])
 #        if not entry in self.parttypes:
+#        print 'copying:', entry
+#        sys.stdout.flush()
         sn.__dict__[entry] = copy.deepcopy(self.__dict__[entry])
     for t in range(sn.ntypes):
       i, = np.where(sn.type == t)
@@ -242,7 +244,8 @@ class snapshot(object):
     self.parttypes = parttypes
     startind = 0
     itype = 0
-    self.dontcopy = set()
+    if not self.dontcopy:
+      self.dontcopy = set()
     for i in xrange(len(parttypes)):
       endind = startind + self.head.npart[i]
       varname = self._makevarname('start', parttypes[i])
@@ -273,7 +276,9 @@ class snapshot(object):
       itype += 1
 #      self.__setattr__(parttypes[i], self.slice(np.arange(startind,endind), assign=False)) 
       self.dontcopy.add(parttypes[i])
-      self.__dict__[parttypes[i]] = self.slice(np.arange(startind,endind), assign=False) 
+#      print parttypes[i], startind,endind
+#      sys.stdout.flush()
+      self.__dict__[parttypes[i]] = self.slice(np.arange(startind,endind), docopy=False, assign=False) 
       startind = endind
 #
 #      self.__setattr__(parttypes[i], self.test)
