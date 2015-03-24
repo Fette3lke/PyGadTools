@@ -295,7 +295,7 @@ class snapshot(object):
     self.pos[:] = posdum
     veldum = np.dot( self.vel, matrix)
     self.vel[:] = veldum
-#    self.assig_names()
+    self.assign_names()
 
   def calcTemp(self):
     mu = (1 + 4 * yhelium) / (1 + yhelium + self.ne);          
@@ -303,7 +303,7 @@ class snapshot(object):
     temp *= self.unit_energy_in_cgs / self.unit_mass_in_g
     self.temp = temp
 
-  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None):
+  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None, shift=False):
     """
     find Center of particles in snapshot
     use     - bitcode particle types to use in search (default: stars=16)
@@ -338,8 +338,57 @@ class snapshot(object):
     self.center = cm
     self.cpos = self.pos - cm
     self.cvel = self.vel - cvel
+    if shift:
+      self.center = np.array([0., 0., 0.])
+      self.pos -= cm
+      self.vel -= cvel
+
     self.calcDistances()
+
+  def findRotation(self, use=16, maxdist=None):
+    ind, = np.where(( (1<<self.type) & use ) != 0)
+    if maxdist == None:
+      dist = np.sqrt(np.sum((self.pos[ind])**2, dtype=np.float64, axis=1))
+      sind = np.argsort(dist)
+      maxdist = dist[sind[len(dist)/2]]
+    
+    q = 1
+    s = 1
+    rot = np.eye(3)
+    while True:
+      s_old = s
+      q_old = q
+      I = np.zeros((3, 3))
+
+      dist   = np.sum((self.pos[ind,:] * np.array([1., 1./q, 1./s]))**2, dtype=np.float64, axis=1)
+      valid, = np.where(dist < maxdist) 
+      ind = ind[valid]
+      for i in np.arange(3):
+        for j in np.arange(i,3):
+          I[i, j] = np.sum(self.pos[ind, i] * self.pos[ind, j])
+          if i!=j:
+            I[j, i] = I[i, j]
+
+      eval, evec = np.linalg.eig(I)
+      si = np.argsort(eval, )[::-1]
+      eval = eval[si]
+      evec = evec[:, si]
       
+      norm = np.sqrt(eval[0])
+      q    = np.sqrt(eval[1])/norm
+      s    = np.sqrt(eval[2])/norm
+
+      rot = np.dot(rot, evec)
+
+      self.pos[:] = np.dot(self.pos, evec)
+      self.vel[:] = np.dot(self.vel, evec)
+
+      if (abs(s_old - s)/s < 1e-2):
+        break
+    self.rot = rot
+    self.assign_names()
+    return (q, s)
+
 
   def calcDistances(self):
     self.dist = np.sqrt(np.sum((self.pos-self.center)**2, dtype=np.float64, axis=1))
@@ -491,7 +540,7 @@ class snapshot(object):
     Calculate velocity curves for different particle types.
     return vcirc, bins[1:], binmass
     """
-    if not hasattr(self, 'dist'):
+    if self.dist == None:
       self.calcDistances()
 #    dist = np.sqrt(np.sum((self.pos-self.center)**2, axis=1))
     binmass = np.zeros([self.ntypes, len(bins)-1])
