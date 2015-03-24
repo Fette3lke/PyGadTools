@@ -199,15 +199,29 @@ class snapshot(object):
     create a slice of the snapshot, containing the data of a subset of the particles given by their indices
     """    
     sn = snapshot()
-    if len(indices) == self.ntot and type(indices[0]) == np.bool_:
-      indices = np.arange(self.ntot)[indices]
-    ind = indices
+    isslice = False
+    if not type(indices) == slice:
+      if len(indices) == self.ntot and type(indices[0]) == np.bool_:
+        indices = np.arange(self.ntot)[indices]
+    else:
+      isslice = True
+    #ind = indices
     for entry in self.__dict__:
       if entry in self.dontcopy:
         continue
       if entry in self.offset:
-        ind, = np.where ((indices >= self.offset[entry][0]) & (indices < sum(self.offset[entry])))
-        ind  = indices[ind] - self.offset[entry][0]
+        if not isslice:
+          ind, = np.where ((indices >= self.offset[entry][0]) & (indices < sum(self.offset[entry])))
+          ind  = indices[ind] - self.offset[entry][0]
+        else:
+          start = indices.start - self.offset[entry][0]
+          stop  = indices.stop  - self.offset[entry][0]
+          if start < 0:
+            start = 0
+          if stop < 0:
+            stop = 0
+          ind = slice(start, stop, indices.step)
+
 #        print entry,  self.offset[entry][0], ind
         if docopy:
           sn.__dict__[entry] = self.__dict__[entry][ind].copy()
@@ -278,7 +292,7 @@ class snapshot(object):
       self.dontcopy.add(parttypes[i])
 #      print parttypes[i], startind,endind
 #      sys.stdout.flush()
-      self.__dict__[parttypes[i]] = self.slice(np.arange(startind,endind), docopy=False, assign=False) 
+      self.__dict__[parttypes[i]] = self.slice(slice(startind,endind), docopy=False, assign=False) 
       startind = endind
 #
 #      self.__setattr__(parttypes[i], self.test)
