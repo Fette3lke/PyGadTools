@@ -148,7 +148,8 @@ class snapshot(object):
     self.pos *= self.head.time / self.head.hubble
     self.vel *= np.sqrt(self.head.time)
     try: 
-      self.rho *= self.head.hubble**2 / self.head.time**3
+      self.rho  *= self.head.hubble**2 / self.head.time**3
+      self.hsml *= self.head.time / self.head.hubble
     except:
       pass
     self.head.boxsize *= self.head.time / self.head.hubble
@@ -309,7 +310,7 @@ class snapshot(object):
     self.pos[:] = posdum
     veldum = np.dot( self.vel, matrix)
     self.vel[:] = veldum
-    self.assign_names()
+    #self.assign_names()
 
   def calcTemp(self):
     mu = (1 + 4 * yhelium) / (1 + yhelium + self.ne);          
@@ -317,7 +318,7 @@ class snapshot(object):
     temp *= self.unit_energy_in_cgs / self.unit_mass_in_g
     self.temp = temp
 
-  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None, shift=False):
+  def findCenter(self, cm=None, use=16, maxdist=None, jump=0.8, exclude=None, shift=True):
     """
     find Center of particles in snapshot
     use     - bitcode particle types to use in search (default: stars=16)
@@ -358,6 +359,7 @@ class snapshot(object):
       self.vel -= cvel
 
     self.calcDistances()
+    return cm
 
   def findRotation(self, use=16, maxdist=None):
     ind, = np.where(( (1<<self.type) & use ) != 0)
@@ -400,7 +402,7 @@ class snapshot(object):
       if (abs(s_old - s)/s < 1e-2):
         break
     self.rot = rot
-    self.assign_names()
+    #self.assign_names()
     return (q, s)
 
 
