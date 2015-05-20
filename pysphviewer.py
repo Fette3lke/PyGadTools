@@ -14,9 +14,9 @@ import matplotlib
 import numpy.linalg
 import OpenGL.GL
 from PIL import _imaging
+from functools import partial
 
 VERSION = "0.1"
-
 
 from pyqtgraph.dockarea import *
 
@@ -133,7 +133,7 @@ class mainWindow(QtGui.QMainWindow):
         self.dock2.addWidget(self.ipythonWidget)
         self.ipythonWidget.execute("%pylab", True, False)
         welcomeText = "\nPySPHViewer v%s\n" % (VERSION) \
-            + "The data of the currently visible Snapshot can be accessed with th 'sn' object\n" \
+            + "The data of the currently visible Snapshot can be accessed with the 'sn' object\n" \
             + "import numpy as np, pyqtgraph as pg\n" \
             + "\n"
         self.ipythonWidget.printText(welcomeText)
@@ -166,27 +166,25 @@ class mainWindow(QtGui.QMainWindow):
             
         w4 = pg.LayoutWidget()
         self.dock3.addWidget(w4)
-        ## spins
-#        spins = [
-#            ("Pointsize", pg.SpinBox(value=1.0, bounds=[0, 100]), self.vis.sizeChange),
-#            ("Alpha", pg.SpinBox(value=0.5, bounds=[0., 1.]), self.vis.alphaChange)
-#            ]        
-#        for text, spin, slot in spins:
-#            label = QtGui.QLabel("%16s" % text)
-#            w4.addWidget(label)
-#            w4.addWidget(spin)
-#            w4.nextRow()
-#            spin.sigValueChanged.connect(slot)
+
+        ## Checkboxes to select particle types to be displayed
+        for t in range(self.vis.ntypes):
+            cb = QtGui.QCheckBox(self.vis.typenames[t])
+            cb.toggle()
+            cb.stateChanged.connect(partial(self.vis.changeDrawTypes, ptype=t))
+            w4.addWidget(cb)
+            w4.nextRow()
 
         sliders = [
-            ("Pointsize", np.sqrt(self.vis.mastersize)*25, self.vis.sizeChange),
-            ("Alpha", self.vis.lum * 100, self.vis.alphaChange)
+            ("Pointsize", np.sqrt(self.vis.mastersize)*25, self.vis.sizeChange, (0,100)),
+            ("Alpha", self.vis.lum * 100, self.vis.alphaChange, (0,100)), 
+            ("Step", self.vis.step, self.vis.stepChange, (1,100)),
             ]
-        for text, val, slot in sliders:
+        for text, val, slot, srange in sliders:
             label = QtGui.QLabel("%16s" % text)
             w4.addWidget(label)
             sl = QtGui.QSlider(QtCore.Qt.Horizontal)
-            sl.setRange(0,100)
+            sl.setRange(*srange)
             sl.setValue(val)
             w4.addWidget(sl)
             w4.nextRow()

@@ -1,5 +1,6 @@
 import pyqtgraph.opengl as gl
 import numpy as np
+import sys
 
 class sphvis(gl.GLScatterPlotItem):
     def __init__(self, load=None, **kwargs):
@@ -10,76 +11,99 @@ class sphvis(gl.GLScatterPlotItem):
             self.setData(pos = np.empty((1,3)), pxMode=False)
         self.mastersize = 1.
         self.lum = 0.5
+        self.step = kwargs.pop("step", 1)
+        self.ntypes = kwargs.pop("ntypes", 6)
+        self.typenames = ["gas", "halo", "disk", "bulge", "stars", "bh"]
+        self.starttype = np.zeros(self.ntypes, dtype=np.int64)
+        self.endtype = np.zeros(self.ntypes, dtype=np.int64)
+        self.alpha = np.ones(self.ntypes) * kwargs.pop("alpha", 1)
+        self.col = [[1., 1., 1]] * self.ntypes
+        self.psize = [kwargs.pop("size", 0.1)] * self.ntypes        
+        self.showTypes = set([])
+        self.drawtype = []
 
     def loaddata_gadget(self, snapshot):
-        self.startgas = snapshot.startgas
-        self.starthalo = snapshot.starthalo
-        self.startdisk = snapshot.startdisk
-        self.startbulge = snapshot.startbulge
-        self.startstars = snapshot.startstars
-        self.startbh = snapshot.startbh
-        self.endgas = snapshot.endgas
-        self.endhalo = snapshot.endhalo
-        self.enddisk = snapshot.enddisk
-        self.endbulge = snapshot.endbulge
-        self.endstars = snapshot.endstars
-        self.endbh = snapshot.endbh
+        self.starttype[0] = snapshot.startgas
+        self.starttype[1] = snapshot.starthalo
+        self.starttype[2] = snapshot.startdisk
+        self.starttype[3] = snapshot.startbulge
+        self.starttype[4] = snapshot.startstars
+        self.starttype[5] = snapshot.startbh
+        self.endtype[0] = snapshot.endgas
+        self.endtype[1] = snapshot.endhalo
+        self.endtype[2] = snapshot.enddisk
+        self.endtype[3] = snapshot.endbulge
+        self.endtype[4] = snapshot.endstars
+        self.endtype[5] = snapshot.endbh
 
         self.npart = np.sum(snapshot.head.npart)
-        self.pos = snapshot.pos
+        self.posdata = snapshot.pos 
         self.colors= np.ones([self.npart, 4])
         self.sizes = np.ones(self.npart) * 0.1
-        self.setData(pos = self.pos, color=self.colors, size=self.sizes, pxMode=False)
+        self.setData(pos = self.posdata[::self.step], color=self.colors[::self.step], size=self.sizes[::self.step], pxMode=False)
         self.initColors()
-        self.initSizes()
+        self.showTypes = set(range(self.ntypes))
+        self.setDrawTypes()
+        self.Update()
 
     def loaddata_custom(self, **kwargs):
         self.setData(**kwargs)
 
-    def initColors(self):
-        self.gasalpha = 1.
-        self.haloalpha = 1.
-        self.diskalpha = 1.
-        self.bulgealpha = 1.
-        self.staralpha = 1.
-        
-        self.gascol = [1., 0., 0.]
-        self.halocol = [0., 0., 1.]
-        self.diskcol = [0., 1., 0.]
-        self.bulgecol = [0., 1., 0.]
-        self.starcol = [1., 1., 0.]
+    def Update(self):
+        self.setPos()
+        self.setColors()
+        self.setSizes()
+        self.update()
+
+    def initColors(self):                
+        self.col[0] = [1., 0., 0.]
+        self.col[1] = [0., 0., 1.]
+        self.col[2] = [0., 1., 0.]
+        self.col[3] = [0., 1., 0.] 
+        self.col[4] = [1., 1., 0.]
+        self.col[5] = [1., .5, 0.]
         self.setColors()
 
-    def initSizes(self):
-        self.gassize = 0.1
-        self.halosize = 0.1
-        self.disksize = 0.1
-        self.bulgesize = 0.1
-        self.starsize = 0.1
-        self.setSizes()
+    def setDrawTypes(self):
+        self.drawtype = np.array([], dtype=np.int64)
+        for t in self.showTypes:
+            self.drawtype = np.concatenate((self.drawtype, np.arange(self.starttype[t], self.endtype[t])))        
+        self.Update()
+
+    def changeDrawTypes(self, state, ptype):
+        self.showTypes ^= set([ptype])
+        self.setDrawTypes()
+
+    def setStep(self, step):
+        if not step > 0:
+            return
+        self.step = step
+        self.Update()
+
+    def setPos(self):
+        self.setData(pos = self.posdata[self.drawtype[::self.step]])
 
     def setColors(self):                
-        self.colors[self.startgas:self.endgas, :] = self.gascol + [self.gasalpha * self.lum ]
-        self.colors[self.starthalo:self.endhalo, :] = self.halocol + [self.haloalpha * self.lum]
-        self.colors[self.startdisk:self.enddisk, :] = self.diskcol + [self.haloalpha * self.lum]
-        self.colors[self.startbulge:self.endbulge, :] = self.bulgecol + [self.bulgealpha * self.lum]
-        self.colors[self.startstars:self.endstars, :] = self.starcol + [self.staralpha * self.lum]
-        self.setData(color=self.colors)
+        for t in range(self.ntypes):
+            self.colors[self.starttype[t]:self.endtype[t], :] = self.col[t] + [self.alpha[t] * self.lum ]
+        self.setData(color=self.colors[self.drawtype[::self.step]])
 
     def setSizes(self):
-        self.sizes[self.startgas:self.endgas] = self.gassize * self.mastersize
-        self.sizes[self.starthalo:self.endhalo] = self.halosize * self.mastersize
-        self.sizes[self.startdisk:self.enddisk] = self.disksize * self.mastersize
-        self.sizes[self.startbulge:self.endbulge] = self.bulgesize * self.mastersize
-        self.sizes[self.startstars:self.endstars] = self.starsize * self.mastersize
-        self.setData(size=self.sizes)
+        for t in range(self.ntypes):
+            self.sizes[self.starttype[t]:self.endtype[t]] = self.psize[t] * self.mastersize
+        self.setData(size=self.sizes[self.drawtype[::self.step]])
         
     def sizeChange(self, val):
         self.mastersize = (val/100. * 4)**2
-        self.setSizes()
-        self.update()
+        self.Update()
 
     def alphaChange(self, val):
         self.lum = val/100.
-        self.setColors()
-        self.update()
+        self.Update()
+        
+    def stepChange(self, val):
+        self.setStep(val)
+        self.Update()
+
+
+
