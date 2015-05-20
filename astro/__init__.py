@@ -82,6 +82,11 @@ class snapshot(object):
       return self.properties[attr]
     except:
       return None
+
+  def __getstate__(self): 
+    return self.__dict__
+  def __setstate__(self, d): 
+    self.__dict__.update(d)
     
   def readgadget(self, filename, export=False, convert=True, basic=False, calcDist=False, loadrot=None):
     self.filename = filename
