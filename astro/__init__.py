@@ -74,19 +74,21 @@ class snapshot(object):
     self.unit_density_in_cgs = self.unit_mass_in_g / self.unit_length_in_cm**3;
     self.unit_energy_in_cgs = self.unit_mass_in_g * self.unit_length_in_cm**2 / self.unit_time_in_s**2
     self.properties = {}
+    self.dontcopy = set()
+
     if filename != None:
       self.readgadget(filename, **kwargs)
 
-  def __getattr__(self, attr):
-    try:
-      return self.properties[attr]
-    except:
-      return None
-
-  def __getstate__(self): 
-    return self.__dict__
-  def __setstate__(self, d): 
-    self.__dict__.update(d)
+#  def __getattr__(self, attr):
+#    try:
+#      return self.properties[attr]
+#    except:
+#      return None
+#
+#  def __getstate__(self): 
+#    return self.__dict__
+#  def __setstate__(self, d): 
+#    self.__dict__.update(d)
     
   def readgadget(self, filename, export=False, convert=True, basic=False, calcDist=False, loadrot=None):
     self.filename = filename
@@ -264,8 +266,6 @@ class snapshot(object):
     self.parttypes = parttypes
     startind = 0
     itype = 0
-    if not self.dontcopy:
-      self.dontcopy = set()
     for i in xrange(len(parttypes)):
       endind = startind + self.head.npart[i]
       varname = self._makevarname('start', parttypes[i])
